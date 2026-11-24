@@ -8,8 +8,8 @@
 Press **Option + Shift + S**, drag over what you want, and that's it. The screenshot is saved as a PNG **and** copied to your clipboard so you can paste it anywhere right away.
 
 <p align="center">
-  <img src="docs/toast.png" width="420" alt="BetterScreenshot notification">
-  <img src="docs/toast-hover.png" width="420" alt="BetterScreenshot notification on hover">
+  <img src="docs/toast.png" width="380" alt="Liquid Glass screenshot notification with a thumbnail">
+  <img src="docs/toast-hover.png" width="380" alt="Hovering reveals the corner close button and Open in Finder">
 </p>
 
 ## What it does
@@ -18,6 +18,7 @@ Press **Option + Shift + S**, drag over what you want, and that's it. The screen
 - **Saves automatically** to `~/Pictures/Screenshots` with a timestamped name like `Screenshot_2026-10-12_02-56-01.png`.
 - **Copies to your clipboard** at the same time.
 - **Shows a small notification** in the top-right corner with a thumbnail of your screenshot. Hover over it to see an **Open in Finder** button and a close (X) button.
+- **Uses native Liquid Glass on macOS 26 or later** when the notification helper is installed. The banner uses the macOS system font and standard control sizes.
 - **No shutter sound** by default.
 - Follows your **light/dark mode**, and respects **Reduce Motion** and **Reduce Transparency**.
 - Pressing **Esc** cancels: nothing is saved or copied.
@@ -27,6 +28,7 @@ Press **Option + Shift + S**, drag over what you want, and that's it. The screen
 - **macOS**
 - **[Homebrew](https://brew.sh)**, which the installer uses to install Hammerspoon
 - **[Hammerspoon](https://www.hammerspoon.org)**, a free macOS automation app (installed for you by the script)
+- **Xcode Command Line Tools with the macOS 26 SDK or later** for Liquid Glass. Run `xcode-select --install` if needed. The standard Hammerspoon notification is available without the helper.
 
 ## Install
 
@@ -44,8 +46,9 @@ The installer:
 2. Installs Hammerspoon if you don't have it yet.
 3. Creates `~/Pictures/Screenshots`.
 4. Copies `betterscreenshot.lua` into `~/.hammerspoon/`.
-5. Adds one line, `require("betterscreenshot")`, to `~/.hammerspoon/init.lua`. If you already have an `init.lua`, it's backed up first and your existing config is kept.
-6. Starts Hammerspoon.
+5. Builds and installs the Liquid Glass notification helper on supported Macs.
+6. Adds one line, `require("betterscreenshot")`, to `~/.hammerspoon/init.lua`. If you already have an `init.lua`, it's backed up first and your existing config is kept.
+7. Starts Hammerspoon.
 
 ### Install without Dynamic Island
 
@@ -78,8 +81,8 @@ Then **quit Hammerspoon and open it again** (click the hammer icon in the menu b
 | Selecting | **Esc** | Cancel (nothing is saved) |
 | Notification | **Hover** | Shows the buttons and keeps the notification open |
 | Notification | **Open in Finder** | Shows the file in Finder |
-| Notification | **X** (top-left) | Closes the notification |
-| Notification | **Click anywhere else** | Closes the notification |
+| Notification | **X** (upper-left corner) | Closes the notification |
+| Notification | **Click the banner** | Closes the notification |
 
 ## Customize
 
@@ -141,6 +144,13 @@ Use `python3 dynamiclake/test_protocol.py` after building to run the local proto
    ```
 4. Open Hammerspoon, give it the permissions above, and restart it.
 
+To add Liquid Glass to a manual installation on macOS 26 or later, build the helper from the repository:
+
+```bash
+xcrun --sdk macosx swiftc -O -target "$(uname -m)-apple-macosx26.0" \
+  notification/BetterScreenshotToast.swift -o "$HOME/.hammerspoon/betterscreenshot-toast"
+```
+
 ## Uninstall
 
 From the `BetterScreenshot` folder:
@@ -149,7 +159,7 @@ From the `BetterScreenshot` folder:
 ./uninstall.sh
 ```
 
-This removes the `require` line from your `init.lua` (after backing it up) and deletes `~/.hammerspoon/betterscreenshot.lua`. Your screenshots are **not** deleted.
+This removes the `require` line from your `init.lua` (after backing it up), the BetterScreenshot module, and the Liquid Glass notification helper. Your screenshots are **not** deleted.
 
 If you installed the optional DynamicLake plugin, you can disable or remove it separately in **DynamicLake → Settings → Plugins**.
 
