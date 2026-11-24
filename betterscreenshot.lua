@@ -151,9 +151,7 @@ local function inRect(px, py, r)
   return px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h
 end
 
-local function showToast(path)
-  dismissToast()  -- replace any toast that's still showing instead of stacking
-
+local function showCanvasToast(path)
   local theme = (hs.host.interfaceStyle() == "Dark") and themes.dark or themes.light
   local reduceMotion = accessibilityPref("reduceMotion")
   local bgColor = accessibilityPref("reduceTransparency") and fade(theme.bg, 1 / theme.bg.alpha) or theme.bg
@@ -373,6 +371,38 @@ local function showToast(path)
   -- After fade-in + stay time, fade out and delete (paused while hovering)
   startDismissTimer(t, fadeInTime + stayTime)
   return canvas
+end
+
+local nativeToastPath = hs.configdir .. "/betterscreenshot-toast"
+local nativeToastTask
+
+local function showToast(path)
+  dismissToast()
+  if nativeToastTask then
+    local previous = nativeToastTask
+    nativeToastTask = nil
+    previous:terminate()
+  end
+
+  if hs.host.operatingSystemVersion().major >= 26 and hs.fs.attributes(nativeToastPath, "mode") == "file" then
+    local screen = hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
+    local frame = screen:frame()
+    local task
+    task = hs.task.new(nativeToastPath, function(exitCode)
+      if nativeToastTask ~= task then return end
+      nativeToastTask = nil
+      if exitCode ~= 0 then showCanvasToast(path) end
+    end, {
+      path, tostring(frame.x + frame.w - marginRight), tostring(frame.y + marginTop),
+      tostring(stayTime), tostring(fadeInTime), tostring(fadeOutTime), tostring(slideDistance),
+    })
+    if task and task:start() then
+      nativeToastTask = task
+      return task
+    end
+  end
+
+  return showCanvasToast(path)
 end
 
 ---------------------------------------------------------------------
