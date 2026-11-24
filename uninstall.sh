@@ -28,6 +28,10 @@ if [[ -f "$HS_DIR/$MODULE" ]]; then
   rm "$HS_DIR/$MODULE"
   ok "Removed ~/.hammerspoon/$MODULE"
 fi
+if [[ -f "$HS_DIR/betterscreenshot-toast" ]]; then
+  rm "$HS_DIR/betterscreenshot-toast"
+  ok "Removed the Liquid Glass notification helper"
+fi
 
 # 3. Reload Hammerspoon if it's running
 if [[ "${BETTERSCREENSHOT_NO_RESTART:-}" != "1" ]] && pgrep -xq Hammerspoon; then

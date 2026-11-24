@@ -7,6 +7,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HS_DIR="$HOME/.hammerspoon"
 INIT="$HS_DIR/init.lua"
 MODULE="betterscreenshot.lua"
+TOAST_HELPER="betterscreenshot-toast"
 REQUIRE_LINE='require("betterscreenshot")'
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
@@ -48,6 +49,24 @@ if [[ -f "$HS_DIR/$MODULE" ]] && ! cmp -s "$REPO_DIR/$MODULE" "$HS_DIR/$MODULE";
 fi
 cp "$REPO_DIR/$MODULE" "$HS_DIR/$MODULE"
 ok "Copied $MODULE to ~/.hammerspoon"
+
+# Install the native notification helper when the macOS SDK supports Liquid Glass.
+macos_version="$(sw_vers -productVersion)"
+if [[ "${macos_version%%.*}" -ge 26 ]]; then
+  if xcode-select -p >/dev/null 2>&1; then
+    toast_staging="$(mktemp "$HS_DIR/.betterscreenshot-toast.XXXXXX")"
+    if xcrun --sdk macosx swiftc -O -target "$(uname -m)-apple-macosx26.0" \
+      "$REPO_DIR/notification/BetterScreenshotToast.swift" -o "$toast_staging" &&
+      chmod +x "$toast_staging" && mv -f "$toast_staging" "$HS_DIR/$TOAST_HELPER"; then
+      ok "Installed the Liquid Glass notification helper"
+    else
+      rm -f "$toast_staging" "$HS_DIR/$TOAST_HELPER"
+      info "Using the Hammerspoon notification. Liquid Glass requires the macOS 26 SDK or newer."
+    fi
+  else
+    info "Liquid Glass requires Xcode Command Line Tools. Run xcode-select --install, then rerun this installer."
+  fi
+fi
 
 # 6. Load it from init.lua (back up first, never add the line twice)
 if [[ -f "$INIT" ]]; then
