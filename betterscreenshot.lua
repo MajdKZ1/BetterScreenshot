@@ -25,8 +25,8 @@ local fadeOutTime   = 0.3
 local slideDistance = 24     -- px it slides in from the right (0 when Reduce Motion is on)
 
 -- Toast size and position
-local toastWidth    = 344    -- native macOS banner width
-local toastHeight   = 76
+local toastWidth    = 376
+local toastHeight   = 80
 local marginTop     = 12     -- gap below the menu bar
 local marginRight   = 14     -- gap from the screen's right edge
 local innerPad      = 12     -- padding inside the banner
@@ -42,21 +42,15 @@ local hoverPoll      = 0.05  -- how often the mouse position is checked
 local hoverExitDelay = 0.15  -- mouse must be outside this long before controls hide
 local hoverMargin    = 4     -- px of slack around the banner that still counts as hovering
 
--- Fonts (SF Pro via the system font)
-local appNameFont  = { name = ".AppleSystemUIFont",       size = 11 }
-local titleFont    = { name = ".AppleSystemUIFontDemi",   size = 13 }  -- Demi = semibold
-local subtitleFont = { name = ".AppleSystemUIFont",       size = 12 }
-local buttonFontName, buttonFontSize = ".AppleSystemUIFontMedium", 11
-
 -- "Open in Finder" pill (fades in on hover)
 local buttonText    = "Open in Finder"
-local buttonWidth   = 92
-local buttonHeight  = 22
+local buttonWidth   = 112
+local buttonHeight  = 28
 
 -- Close (X) button overlapping the top-left corner (fades in on hover)
 local closeSize     = 18     -- visible circle diameter
 local closeInset    = 4      -- circle center sits this far inside the banner's corner
-local closeHitSize  = 26     -- clickable area is larger than the circle
+local closeHitSize  = 28     -- clickable area is larger than the circle
 
 -- Colors for light and dark mode, modeled on macOS semantic colors
 local themes = {
@@ -153,6 +147,7 @@ end
 
 local function showCanvasToast(path)
   local theme = (hs.host.interfaceStyle() == "Dark") and themes.dark or themes.light
+  local fonts = hs.styledtext.defaultFonts
   local reduceMotion = accessibilityPref("reduceMotion")
   local bgColor = accessibilityPref("reduceTransparency") and fade(theme.bg, 1 / theme.bg.alpha) or theme.bg
   local slide = reduceMotion and 0 or slideDistance
@@ -180,15 +175,14 @@ local function showCanvasToast(path)
   local thumb  = { x = box.x + box.w - innerPad - thumbSize, y = box.y + (box.h - thumbSize) / 2, w = thumbSize, h = thumbSize }
   local btn    = { x = thumb.x - 8 - buttonWidth, y = box.y + (box.h - buttonHeight) / 2, w = buttonWidth, h = buttonHeight }
   local btnHit = { x = btn.x - 4, y = btn.y - 4, w = btn.w + 8, h = btn.h + 8 }
-  local textW  = thumb.x - 8 - left   -- text may run under the pill; the pill only shows on hover
+  local textW  = btn.x - 8 - left
   local closeC = { x = box.x + closeInset, y = box.y + closeInset }
   local closeR = closeSize / 2
   -- Hover area = banner + the close button overhang + a little slack
-  local hoverArea = {
-    x = closeC.x - closeR - hoverMargin, y = closeC.y - closeR - hoverMargin,
-    w = (box.x + box.w + hoverMargin) - (closeC.x - closeR - hoverMargin),
-    h = (box.y + box.h + hoverMargin) - (closeC.y - closeR - hoverMargin),
-  }
+  local hoverX = closeC.x - closeHitSize / 2 - hoverMargin
+  local hoverY = math.max(0, closeC.y - closeHitSize / 2 - hoverMargin)
+  local hoverArea = { x = hoverX, y = hoverY,
+    w = box.x + box.w + hoverMargin - hoverX, h = box.y + box.h + hoverMargin - hoverY }
 
   -- Hover state (driven by the mouse poll below)
   local hovering, lastInside = false, 0
@@ -237,19 +231,19 @@ local function showCanvasToast(path)
   add({
     type = "text",
     frame = { x = left + appIconSize + 6, y = box.y + 13, w = textW, h = 14 },
-    text = hs.styledtext.new(appName, { font = appNameFont, color = theme.secondary }),
+    text = hs.styledtext.new(appName, { font = { name = fonts.system.name, size = 11 }, color = theme.secondary }),
   })
 
   -- Title + subtitle
   add({
     type = "text",
     frame = { x = left, y = box.y + 31, w = textW, h = 17 },
-    text = hs.styledtext.new("Screenshot saved", { font = titleFont, color = theme.label }),
+    text = hs.styledtext.new("Screenshot saved", { font = fonts.boldSystem, color = theme.label }),
   })
   add({
     type = "text",
     frame = { x = left, y = box.y + 47, w = textW, h = 16 },
-    text = hs.styledtext.new("Copied to clipboard", { font = subtitleFont, color = theme.secondary }),
+    text = hs.styledtext.new("Copied to clipboard", { font = fonts.system, color = theme.secondary }),
   })
 
   -- Thumbnail: rounded clip, faint backing, image (aspect fill), unclip, hairline edge
@@ -274,8 +268,8 @@ local function showCanvasToast(path)
   }, "fillColor", function(a) return fade(pillHot and theme.pillHover or theme.pill, a) end)
   addHover({
     type = "text", text = buttonText,
-    textFont = buttonFontName, textSize = buttonFontSize, textAlignment = "center",
-    frame = { x = btn.x, y = btn.y + (buttonHeight - 14) / 2, w = btn.w, h = 16 },
+    textFont = fonts.system.name, textSize = fonts.system.size, textAlignment = "center",
+    frame = { x = btn.x, y = btn.y + (buttonHeight - 16) / 2, w = btn.w, h = 18 },
   }, "textColor", function(a) return fade(theme.label, a) end)
 
   -- Close (X) button: circle with banner background, hairline, soft shadow, grey glyph
