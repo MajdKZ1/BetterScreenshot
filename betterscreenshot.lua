@@ -14,6 +14,9 @@ local screenshotMods = { "alt", "shift" }    -- hotkey modifiers: "cmd", "alt" (
 local screenshotKey  = "s"                   -- hotkey key
 local playSound      = false                 -- true = play the macOS camera shutter sound
 local launchAtLogin  = true                  -- start Hammerspoon automatically when you log in
+local dynamicLakePreview = false             -- opt in to the DynamicLake beta plugin
+local dynamicLakeHistoryMods = { "alt", "shift" }
+local dynamicLakeHistoryKey = "h"              -- reopen the compact screenshot history
 
 -- Toast timing (seconds)
 local stayTime      = 2.5    -- how long the toast stays (paused while the mouse is over it)
@@ -379,6 +382,61 @@ end
 -- Keep a reference to the running task so Lua doesn't garbage-collect it mid-capture
 local screenshotTask = nil
 
+local bridgeDir = os.getenv("HOME") .. "/Library/Application Support/BetterScreenshot"
+local bridgeState = bridgeDir .. "/dynamiclake.json"
+local bridgeAck = bridgeDir .. "/dynamiclake-ack"
+local previewWait = 1
+
+local function publishDynamicLakeState(capture, token, deadline)
+  hs.fs.mkdir(bridgeDir)
+  local tmp = bridgeState .. ".tmp"
+  local state = { folder = screenshotDir, capture = capture, token = token, deadline = deadline }
+  if not hs.json.write(state, tmp, false, true) then
+    return false
+  end
+  if os.rename(tmp, bridgeState) then return true end
+  os.remove(tmp)
+  return false
+end
+
+local function requestDynamicLake(capture, onUnavailable)
+  local token = hs.host.uuid()
+  if not publishDynamicLakeState(capture, token, hs.timer.secondsSinceEpoch() + previewWait) then
+    onUnavailable()
+    return
+  end
+
+  hs.timer.doAfter(previewWait, function()
+    local ack = io.open(bridgeAck, "r")
+    if ack then
+      for accepted in ack:lines() do
+        if accepted == token then
+          ack:close()
+          return
+        end
+      end
+      ack:close()
+    end
+    onUnavailable()
+  end)
+end
+
+local function notifyScreenshot(path, capture)
+  if not dynamicLakePreview then
+    showToast(path)
+    return
+  end
+
+  requestDynamicLake(capture, function() showToast(path) end)
+end
+
+if dynamicLakePreview then
+  publishDynamicLakeState()
+  hs.hotkey.bind(dynamicLakeHistoryMods, dynamicLakeHistoryKey, function()
+    requestDynamicLake(nil, function() hs.alert.show("DynamicLake screenshot history unavailable", 1.5) end)
+  end)
+end
+
 local function takeScreenshot()
   -- Don't start a second capture while one is already open
   if screenshotTask and screenshotTask:isRunning() then return end
@@ -387,7 +445,14 @@ local function takeScreenshot()
   hs.fs.mkdir(screenshotDir)
 
   -- Timestamped filename, e.g. Screenshot_2026-10-12_02-56-01.png
-  local path = screenshotDir .. "/Screenshot_" .. os.date("%Y-%m-%d_%H-%M-%S") .. ".png"
+  local stem = "Screenshot_" .. os.date("%Y-%m-%d_%H-%M-%S")
+  local capture = stem .. ".png"
+  local suffix = 1
+  while hs.fs.symlinkAttributes(screenshotDir .. "/" .. capture) do
+    suffix = suffix + 1
+    capture = stem .. "_" .. suffix .. ".png"
+  end
+  local path = screenshotDir .. "/" .. capture
 
   -- -i = interactive area selection (Space toggles window mode, Esc cancels)
   -- -x = no shutter sound
@@ -396,12 +461,12 @@ local function takeScreenshot()
 
   screenshotTask = hs.task.new("/usr/sbin/screencapture", function(exitCode, stdOut, stdErr)
     -- If you pressed Escape, screencapture writes no file, so we just do nothing
-    if not hs.fs.attributes(path) then return end
+    if exitCode ~= 0 or not hs.fs.attributes(path) then return end
 
     local img = hs.image.imageFromPath(path)
     if img then
       hs.pasteboard.writeObjects(img)  -- copy to clipboard
-      showToast(path)
+      notifyScreenshot(path, capture)
     else
       hs.alert.show("Screenshot saved (clipboard copy failed)", 1.5)
     end

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "identifier": "com.majdkz1.betterscreenshot",
+  "name": "BetterScreenshot (Beta)",
+  "version": "1.5.0",
+  "developerName": "MajdKZ1",
+  "executable": "betterscreenshot-plugin",
+  "autoStart": true,
+  "lake": {
+    "size": "small",
+    "glance": { "systemImage": "camera.viewfinder" }
+  }
+}

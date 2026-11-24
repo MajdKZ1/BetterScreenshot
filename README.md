@@ -2,6 +2,9 @@
 
 > This isn't an official tool. It's just a personal tool I made to take screenshots more easily. It isn't properly maintained or anything fancy, it's just for convenience and ease of use. Enjoy!
 
+> [!NOTE]
+> **Dynamic Island support is in beta and still under development.** It’s off by default on `main`. For the original screenshot experience without the integration, [install the `no-dynamic-island` branch](#install-without-dynamic-island).
+
 Press **Option + Shift + S**, drag over what you want, and that's it. The screenshot is saved as a PNG **and** copied to your clipboard so you can paste it anywhere right away.
 
 <p align="center">
@@ -44,6 +47,18 @@ The installer:
 5. Adds one line, `require("betterscreenshot")`, to `~/.hammerspoon/init.lua`. If you already have an `init.lua`, it's backed up first and your existing config is kept.
 6. Starts Hammerspoon.
 
+### Install without Dynamic Island
+
+Use the [`no-dynamic-island`](https://github.com/MajdKZ1/BetterScreenshot/tree/no-dynamic-island) branch for the original screenshot hotkey, clipboard copy, and notification toast.
+
+```bash
+git clone --branch no-dynamic-island --single-branch https://github.com/MajdKZ1/BetterScreenshot.git BetterScreenshot-no-dynamic-island
+cd BetterScreenshot-no-dynamic-island
+./install.sh
+```
+
+If you previously installed the BetterScreenshot beta plugin, disable or remove it in **DynamicLake Pro → Settings → Plugins** as well.
+
 ### Give Hammerspoon permission (required)
 
 macOS needs you to allow two things the first time:
@@ -78,8 +93,43 @@ All settings are at the top of `~/.hammerspoon/betterscreenshot.lua`. Open it in
 | Shutter sound | `playSound` | `true` |
 | Launch at login | `launchAtLogin` | `false` |
 | How long the notification stays | `stayTime` | `4` (seconds) |
+| Preview in DynamicLake (beta) | `dynamicLakePreview` | `false` by default. Set to `true` to opt in. |
 
 > If you run `./install.sh` again later, your edited file is backed up as `betterscreenshot.lua.bak-<date>` before being replaced.
+
+## Dynamic Island beta for DynamicLake Pro
+
+This optional integration is still under development. The plugin appears as **BetterScreenshot (Beta)** in DynamicLake Pro.
+
+BetterScreenshot shows a single thumbnail in the compact Dynamic Island for about three seconds. Captures are copied to the macOS clipboard automatically. Click the preview to show up to two recent screenshots in the same row, then click either image to copy its original PNG. Thumbnails are generated in memory from your configured screenshot folder.
+
+For older captures, open **DynaGlance** and select the **camera** icon in its bottom navigation pill. The tab is available while the plugin is enabled, even when no capture is active.
+
+### Build and install
+
+1. Install or update the BetterScreenshot Hammerspoon module. If your Hammerspoon setup already contains an older inline screenshot implementation, migrate that hotkey to the module before reloading.
+2. Build the local plugin package on the Mac where you’ll use it. This requires the Xcode Command Line Tools (`xcode-select --install`).
+
+   ```bash
+   ./dynamiclake/package.sh
+   ```
+
+3. In **DynamicLake Pro → Settings → Plugins → Install Local**, select `build/BetterScreenshot.dynamiclakeplugin`. Enable the plugin and allow action callbacks in its plugin settings so the thumbnails are clickable.
+4. In `~/.hammerspoon/betterscreenshot.lua`, set `dynamicLakePreview = true` and reload Hammerspoon. For a custom save folder, set `screenshotDir` to its absolute path in the same file. Reloading shares that folder with the plugin before the first capture. Without a shared folder setting, the plugin uses `~/Pictures/Screenshots`.
+5. Click the preview while it is visible to show recent screenshots. Press **Option + Shift + H** to show them after the preview dismisses. Change `dynamicLakeHistoryMods` and `dynamicLakeHistoryKey` in the Lua module if that shortcut conflicts with another app.
+
+### Verify and troubleshoot
+
+- Take a screenshot with **Option + Shift + S**. The thumbnail appears in a single row and dismisses after about three seconds. If you take another screenshot while it is visible, the thumbnail updates in place. Press **Esc** during capture to verify that canceling adds no entry or preview.
+- Open recent screenshots and click a thumbnail to copy its original PNG. The latest is on the left and the previous one is on the right. The row closes after you select an image.
+- In the DynaGlance camera tab, scroll through a page and use the arrows to browse older or newer pages. Click a thumbnail or the copy icon to copy its image. The folder icon reveals the original PNG in Finder. Both actions are also available by right-clicking a row.
+- **Clear History** (**Clear** in DynaGlance) hides existing screenshots from the history and compact recents for that save folder. The original PNGs stay on disk, and new captures appear normally after a restart.
+- Expand DynaGlance's right pane for the full Screenshot History Lake, or select **BetterScreenshot (Beta)** under **Plugins** in DynamicLake’s **Left Click Lake**, **Right Click Lake**, or **On Hover Behavior** settings.
+- DynamicLake’s activity priority and visibility settings determine what appears in the island. The Hammerspoon toast is skipped when DynamicLake accepts the Live Activity. If it does not acknowledge the request within one second, Hammerspoon shows its usual toast. Set `dynamicLakePreview = false` and reload Hammerspoon for an immediate toast every time.
+- DynamicLake Pro 2.2.2 renders up to two images in its compact activity. The capture preview stays in that row. The DynaGlance tab and full Lake require the host’s `lake` and `lakeLayout` features.
+- The plugin uses your local screenshot folder and needs no DynamicLake plugin permission declarations. If your custom folder is unavailable to the plugin, check that DynamicLake can read it. Your existing Hammerspoon permissions still govern capture.
+
+Use `python3 dynamiclake/test_protocol.py` after building to run the local protocol tests. The package uses DynamicLake’s [JSON Plugin API](https://docs.dynamiclake.com/documentation/dynamiclakekit/jsonpluginapi/) and [Lakes API](https://docs.dynamiclake.com/documentation/dynamiclakekit/lakes/).
 
 ## Manual install (without the script)
 
@@ -100,6 +150,8 @@ From the `BetterScreenshot` folder:
 ```
 
 This removes the `require` line from your `init.lua` (after backing it up) and deletes `~/.hammerspoon/betterscreenshot.lua`. Your screenshots are **not** deleted.
+
+If you installed the optional DynamicLake plugin, you can disable or remove it separately in **DynamicLake → Settings → Plugins**.
 
 To remove Hammerspoon as well:
 
